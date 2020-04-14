@@ -20,16 +20,30 @@ int main(int argc, char **argv) {
   int array_size = -1;
   int pnum = -1;
   bool with_files = false;
-
+  
   while (true) {
+    //the id of current parameter
     int current_optind = optind ? optind : 1;
 
+    //special array with long parameters options
+    // аргумент 1 - название параметра
+    // аргумент 2 - has_arg определяет нужно ли для этого параметра значение
+    //  #define no_argument            0
+    //  #define required_argument      1
+    //  #define optional_argument      2
+    // аргумент 3 - flag задает указатель на флаг, в который помещается значение val, если найден данный параметр
+    // аргумент 4 - val содержит значение, которое помещается в flag или возвращается в качестве результата работы функции
+    //Последняя запись массива options должна содержать нулевые значения,
+    // для того чтобы функция могла однозначно определить конец массива
     static struct option options[] = {{"seed", required_argument, 0, 0},
                                       {"array_size", required_argument, 0, 0},
                                       {"pnum", required_argument, 0, 0},
                                       {"by_files", no_argument, 0, 'f'},
                                       {0, 0, 0, 0}};
-
+    // getopt_long
+    //аргумент 3 - optstring with short parameters
+    //аргумент 5 - __longind - указатель на переменную, в которую будет помещен индекс текущего параметра 
+    //из массива options
     int option_index = 0;
     int c = getopt_long(argc, argv, "f", options, &option_index);
 
