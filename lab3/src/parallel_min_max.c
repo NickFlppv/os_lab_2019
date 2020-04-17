@@ -20,19 +20,21 @@ int main(int argc, char **argv) {
   int array_size = -1;
   int pnum = -1;
   bool with_files = false;
-  
+
   while (true) {
-    //the id of current parameter
+    // the id of current parameter
     int current_optind = optind ? optind : 1;
 
-    //special array with long parameters options
+    // special array with long parameters options
     // аргумент 1 - название параметра
     // аргумент 2 - has_arg определяет нужно ли для этого параметра значение
     //  #define no_argument            0
     //  #define required_argument      1
     //  #define optional_argument      2
-    // аргумент 3 - flag задает указатель на флаг, в который помещается значение val, если найден данный параметр
-    // аргумент 4 - val содержит значение, которое помещается в flag или возвращается в качестве результата работы функции
+    // аргумент 3 - flag задает указатель на флаг, в который помещается значение
+    // val, если найден данный параметр аргумент 4 - val содержит значение,
+    // которое помещается в flag или возвращается в качестве результата работы
+    // функции
     //Последняя запись массива options должна содержать нулевые значения,
     // для того чтобы функция могла однозначно определить конец массива
     static struct option options[] = {{"seed", required_argument, 0, 0},
@@ -42,48 +44,49 @@ int main(int argc, char **argv) {
                                       {0, 0, 0, 0}};
     // getopt_long
     //аргумент 3 - optstring with short parameters
-    //аргумент 5 - __longind - указатель на переменную, в которую будет помещен индекс текущего параметра 
-    //из массива options
+    //аргумент 5 - __longind - указатель на переменную, в которую будет помещен
+    //индекс текущего параметра из массива options
     int option_index = 0;
     int c = getopt_long(argc, argv, "f", options, &option_index);
 
-    if (c == -1) break;
+    if (c == -1)
+      break;
 
     switch (c) {
+    case 0:
+      switch (option_index) {
       case 0:
-        switch (option_index) {
-          case 0:
-            seed = atoi(optarg);
-            // your code here
-            // error handling
-            break;
-          case 1:
-            array_size = atoi(optarg);
-            // your code here
-            // error handling
-            break;
-          case 2:
-            pnum = atoi(optarg);
-            // your code here
-            // error handling
-            break;
-          case 3:
-            with_files = true;
-            break;
-
-          defalut:
-            printf("Index %d is out of options\n", option_index);
-        }
+        seed = atoi(optarg);
+        if (seed <= 0)
+          exit(0);
         break;
-      case 'f':
+      case 1:
+        array_size = atoi(optarg);
+        if (array_size <= 0)
+          exit(0);
+        break;
+      case 2:
+        pnum = atoi(optarg);
+        if (pnum <= 0)
+          exit(0);
+        break;
+      case 3:
         with_files = true;
         break;
 
-      case '?':
-        break;
+      defalut:
+        printf("Index %d is out of options\n", option_index);
+      }
+      break;
+    case 'f':
+      with_files = true;
+      break;
 
-      default:
-        printf("getopt returned character code 0%o?\n", c);
+    case '?':
+      break;
+
+    default:
+      printf("getopt returned character code 0%o?\n", c);
     }
   }
 
@@ -104,26 +107,49 @@ int main(int argc, char **argv) {
 
   struct timeval start_time;
   gettimeofday(&start_time, NULL);
-
+  int file_pipe[2];
+  if (pipe(file_pipe) < 0) {
+    exit(0);
+  }
   for (int i = 0; i < pnum; i++) {
     pid_t child_pid = fork();
     if (child_pid >= 0) {
       // successful fork
+      printf("fork1 %d %d\n", i, child_pid);
       active_child_processes += 1;
       if (child_pid == 0) {
         // child process
-
+        printf("fork2 %d %d\n", i, child_pid);
+        struct MinMax min_max1 = GetMinMax(array, 0, array_size);
         // parallel somehow
 
         if (with_files) {
           // use files here
+          FILE *fp;
+          fp = fopen("min_max.txt", "w");
+          flock(fp, "LOCK_EX");
+          char buf[256];
+          sprintf(buf, "%d", min_max1.min);
+          fprintf(fp, buf);
+          fprintf(fp, (const char *)"\n");
+          sprintf(buf, "%d", min_max1.max);
+          fprintf(fp, buf);
+          fprintf(fp, (const char *)"\n");
+          flock(fp, "LOCK_UN");
+          fclose(fp);
         } else {
           // use pipe here
+          char buffer[256];
+          sprintf(buffer, "%d", min_max1.min);
+          write(file_pipe[1], buffer, strlen(buffer));
+          sprintf(buffer, "%d", min_max1.max);
+          write(file_pipe[1], buffer, strlen(buffer));
         }
         return 0;
       }
 
     } else {
+      printf("fork3 %d\n", i);
       printf("Fork failed!\n");
       return 1;
     }
@@ -131,7 +157,7 @@ int main(int argc, char **argv) {
 
   while (active_child_processes > 0) {
     // your code here
-
+    wait(0);
     active_child_processes -= 1;
   }
 
@@ -145,12 +171,34 @@ int main(int argc, char **argv) {
 
     if (with_files) {
       // read from files
+      FILE *fp;
+
+        fp=fopen("min_max.txt", "r");
+        char buf[256];
+        fscanf(fp,"%s",buf);
+        min = atoi(buf);
+        fscanf(fp,"%s",buf);
+        max = atoi(buf);
+        printf("files\n");
     } else {
       // read from pipes
+      char buf[256];
+        int num;
+        read(file_pipe[0],buf,9);
+        //printf("%s\n",buf);
+        num=atoi(buf);
+        min=num;
+        read(file_pipe[0],buf,10);
+        //printf("%s\n",buf);
+        num=atoi(buf);
+        max=num;
+        printf("pipe\n");
     }
 
-    if (min < min_max.min) min_max.min = min;
-    if (max > min_max.max) min_max.max = max;
+    if (min < min_max.min)
+      min_max.min = min;
+    if (max > min_max.max)
+      min_max.max = max;
   }
 
   struct timeval finish_time;
