@@ -108,10 +108,11 @@ int main(int argc, char **argv) {
   struct timeval start_time;
   gettimeofday(&start_time, NULL);
   int file_pipe[2];
+  int i;
   if (pipe(file_pipe) < 0) {
     exit(0);
   }
-  for (int i = 0; i < pnum; i++) {
+  for (i = 0; i < pnum; i++) {
     pid_t child_pid = fork();
     if (child_pid >= 0) {
       // successful fork
@@ -165,7 +166,7 @@ int main(int argc, char **argv) {
   min_max.min = INT_MAX;
   min_max.max = INT_MIN;
 
-  for (int i = 0; i < pnum; i++) {
+  for (i = 0; i < pnum; i++) {
     int min = INT_MAX;
     int max = INT_MIN;
 
