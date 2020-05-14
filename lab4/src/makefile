@@ -3,8 +3,8 @@ CFLAGS=-I.
 
 all:  parallel_min_max process_memory
 
-zoombie:
-	$(CC) zoombie.c && ./a.out $(CFLAGS)
+zombie:
+	$(CC) zombie.c && ./a.out $(CFLAGS)
 
 process_memory:
 	$(CC) process_memory.c -o process_memory $(CFLAGS)
