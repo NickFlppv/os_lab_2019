@@ -171,4 +171,4 @@ int main(int argc, char **argv) {
 }
 
 
-//gcc -lpthread  factorial.c -o fac.o && ./fac.o --k 5 --pnum 1 --mod 121
+//gcc -lpthread  factorial.c -o factorial.o && ./factorial.o --k 5 --pnum 1 --mod 121
