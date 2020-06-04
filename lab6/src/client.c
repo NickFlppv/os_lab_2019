@@ -12,22 +12,62 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include "modul.h"
+#define mem_block_size 4
+
 struct Server {
   char ip[255];
   int port;
 };
 
-uint64_t MultModulo(uint64_t a, uint64_t b, uint64_t mod) {
-  uint64_t result = 0;
-  a = a % mod;
-  while (b > 0) {
-    if (b % 2 == 1)
-      result = (result + a) % mod;
-    a = (a * 2) % mod;
-    b /= 2;
-  }
+uint64_t total = 1;
 
-  return result % mod;
+
+int recognizing(char* buff, uint32_t* pos, struct Server* to)
+{
+	char* temp = buff;
+	uint32_t offset = 0;
+    int j, i;
+	for(j = 0; j < 3; j++)
+	for(i = 0; i < 4; i++)
+	{
+		if((*(temp + offset) >= '0') && (*(temp + offset) <= '9'))
+		{
+			offset++;
+			continue;
+		}
+		if(*(temp + offset) == '.')
+		{
+			offset++;
+			break;
+		}
+		return 1;
+		
+	}
+	for(i = 0; i < 4; i++)
+	{
+		if((*(temp + offset) >= '0') && (*(temp + offset) <= '9'))
+		{
+			offset++;
+			continue;
+		}
+		if(*(temp + offset) == ':')	break;
+		return 1;
+	}
+	memcpy(&to->ip, temp, offset);
+	to->ip[offset] = '\0';
+	offset++;
+	temp += offset;
+	*pos += offset;
+	offset = 0;
+	while((*(temp + offset) >= '0') && (*(temp + offset) <= '9'))
+		offset++;
+	if((*(temp + offset) != '\n') && (*(temp + offset) != ' '))
+		return 1;
+	temp[offset] = '\0';
+	to->port = atoi(temp);
+	*pos += offset;
+	return 0;
 }
 
 bool ConvertStringToUI64(const char *str, uint64_t *val) {
@@ -69,14 +109,15 @@ int main(int argc, char **argv) {
       switch (option_index) {
       case 0:
         ConvertStringToUI64(optarg, &k);
-        // TODO: your code here
+        if(k == 0)
+		  k = -1;
         break;
       case 1:
         ConvertStringToUI64(optarg, &mod);
-        // TODO: your code here
+        if(mod == 0)
+		  mod = -1;
         break;
       case 2:
-        // TODO: your code here
         memcpy(servers, optarg, strlen(optarg));
         break;
       default:
@@ -98,15 +139,48 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  // TODO: for one server here, rewrite with servers from file
-  unsigned int servers_num = 1;
-  struct Server *to = malloc(sizeof(struct Server) * servers_num);
-  // TODO: delete this and parallel work between servers
-  to[0].port = 20001;
-  memcpy(to[0].ip, "127.0.0.1", sizeof("127.0.0.1"));
+  // for one server here, rewrite with servers from file
+  // delete this and parallel work between servers
+	FILE* f = fopen(servers, "r");
+	if(!f)
+	{
+		printf("server file error!\n");
+		return 1;
+	}
+  	struct Server *to = malloc(sizeof(struct Server) * mem_block_size);
+	uint32_t pos = 0;
+	char buff[24];
+	uint32_t mem_serv_counter = 1;
+	uint32_t servers_num = 0;
+	while(!feof(f) || (servers_num > k))
+	{
+		if(servers_num == (mem_block_size*mem_serv_counter))
+		{
+			mem_serv_counter++;
+			to = (struct Server *) realloc(to, mem_block_size*mem_serv_counter*sizeof(struct Server));
+		}
+		fseek(f, pos, SEEK_SET);
+		if(fread(&buff, 1, 24, f) == 0)
+		{
+			printf("rw file error!\n");
+			fclose(f);
+			return 1;
+		}
+		if(recognizing(buff, &pos, to + servers_num))
+		{
+			fclose(f);
+			printf("file format error!\n");
+			return 1;
+		}
+		pos++;
+		servers_num++;
+	}
+	fclose(f);
+	to = (struct Server *) realloc(to, servers_num*sizeof(struct Server));
 
-  // TODO: work continiously, rewrite to make parallel
-  for (int i = 0; i < servers_num; i++) {
+  // work continiously, rewrite to make parallel
+  int i;
+  for (i = 0; i < servers_num; i++) {
     struct hostent *hostname = gethostbyname(to[i].ip);
     if (hostname == NULL) {
       fprintf(stderr, "gethostbyname failed with %s\n", to[i].ip);
@@ -129,35 +203,32 @@ int main(int argc, char **argv) {
       exit(1);
     }
 
-    // TODO: for one server
+    //  for one server
     // parallel between servers
-    uint64_t begin = 1;
-    uint64_t end = k;
+    uint64_t begin = i*k/servers_num + 1;
+    uint64_t end = (i == (servers_num-1)) ? k + 1 : (i+1)*k/servers_num + 1;
 
-    char task[sizeof(uint64_t) * 3];
-    memcpy(task, &begin, sizeof(uint64_t));
-    memcpy(task + sizeof(uint64_t), &end, sizeof(uint64_t));
-    memcpy(task + 2 * sizeof(uint64_t), &mod, sizeof(uint64_t));
+    memcpy(buff, &begin, sizeof(uint64_t));
+    memcpy(buff + sizeof(uint64_t), &end, sizeof(uint64_t));
+    memcpy(buff + 2 * sizeof(uint64_t), &mod, sizeof(uint64_t));
 
-    if (send(sck, task, sizeof(task), 0) < 0) {
+    if (send(sck, buff, 3 * sizeof(uint64_t), 0) < 0) {
       fprintf(stderr, "Send failed\n");
       exit(1);
     }
 
-    char response[sizeof(uint64_t)];
-    if (recv(sck, response, sizeof(response), 0) < 0) {
+    uint64_t answer = 0;
+    if (recv(sck, (char*)&answer, sizeof(answer), 0) < 0) {
       fprintf(stderr, "Recieve failed\n");
       exit(1);
     }
 
-    // TODO: from one server
+    // from one server
     // unite results
-    uint64_t answer = 0;
-    memcpy(&answer, response, sizeof(uint64_t));
-    printf("answer: %llu\n", answer);
-
+    total = MultModulo(total, answer, mod);
     close(sck);
   }
+  printf("answer: %llu\n", total);
   free(to);
 
   return 0;
