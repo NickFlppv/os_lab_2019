@@ -108,3 +108,5 @@ int main(int argc, char **argv) {
   }
   close(sockfd);
 }
+
+// ./udpcli --BUFSIZE 1024 --SERV_PORT 20001 --ADDR  127.0.0.1

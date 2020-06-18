@@ -109,3 +109,4 @@ int main(int argc, char *argv[]) {
     close(cfd);
   }
 }
+// ./tcpserv --BUFSIZE 100 --SERV_PORT 10050

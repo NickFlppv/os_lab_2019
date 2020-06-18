@@ -107,3 +107,4 @@
 	  close(fd);
 	  exit(0);
 	}
+    // ./tcpcli --BUFSIZE 100 --SERV_PORT 10050 --ADDR 127.0.0.1  

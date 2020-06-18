@@ -109,3 +109,4 @@ int main(int argc, char **argv) {
     }
   }
 }
+// ./udpserv --BUFSIZE 1024 --SERV_PORT 20001
