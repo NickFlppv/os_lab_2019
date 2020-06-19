@@ -7,7 +7,6 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-
 //#define SERV_PORT 10050
 //#define BUFSIZE 100
 #define SADDR struct sockaddr
@@ -97,6 +96,7 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
   printf("connection established\n");
+  close(connectionFileDescriptor);
   // udp starts
   int messageLength;
   char message[BUFSIZE], ipadr[16];
@@ -136,6 +136,5 @@ int main(int argc, char *argv[]) {
       }
     }
   }
-  close(connectionFileDescriptor);
 }
 // ./server --BUFSIZE 1024 --SERV_PORT 10050
