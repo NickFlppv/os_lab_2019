@@ -97,7 +97,9 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
   printf("connected to server %s:%d\n", ADDR, SERV_PORT);
+  close(fd);
   // udp starts
+
   int sockfd, n;
   char sendline[BUFSIZE], recvline[BUFSIZE + 1];
   struct sockaddr_in cliaddr;
@@ -107,7 +109,7 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  write(1, "Enter string\n", 13);
+  write(1, "Enter udp message:\n", 13);
 
   while ((n = read(0, sendline, BUFSIZE)) > 0) {
     if (sendto(sockfd, sendline, n, 0, (SADDR *)&servaddr, SLEN) == -1) {
@@ -123,8 +125,6 @@ int main(int argc, char *argv[]) {
     printf("REPLY FROM SERVER= %s\n", recvline);
   }
   close(sockfd);
-
-  close(fd);
   exit(0);
 }
-// ./client --BUFSIZE 100 --SERV_PORT 10050 --ADDR 127.0.0.1
+// ./client --BUFSIZE 1024 --SERV_PORT 10050 --ADDR 127.0.0.1

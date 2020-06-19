@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  while (1) {
+//   while (1) {
     unsigned int clilen = kSize;
 
     if ((cfd = accept(lfd, (SADDR *)&cliaddr, &clilen)) < 0) {
@@ -100,12 +100,11 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
     printf("connection established\n");
+    close(cfd);
     // udp starts
-
+    
     int sockfd, n;
     char mesg[BUFSIZE], ipadr[16];
-    struct sockaddr_in servaddr;
-    struct sockaddr_in cliaddr;
 
     if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
       perror("socket problem");
@@ -121,7 +120,7 @@ int main(int argc, char *argv[]) {
       perror("bind problem");
       exit(1);
     }
-    printf("SERVER starts...\n");
+    printf("Accepting udp starts...\n");
 
     while (1) {
       unsigned int len = SLEN;
@@ -142,7 +141,5 @@ int main(int argc, char *argv[]) {
         exit(1);
       }
     }
-    close(cfd);
-  }
 }
-// ./server --BUFSIZE 100 --SERV_PORT 10050
+// ./server --BUFSIZE 1024 --SERV_PORT 10050
