@@ -98,7 +98,6 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
   printf("connection established\n");
-  close(connectionFileDescriptor);
   // udp starts
   int messageLength;
   char message[BUFSIZE], ipadr[16];
@@ -114,12 +113,17 @@ int main(int argc, char *argv[]) {
   }
   printf("Accepting udp starts...\n");
 
+  int endFlag = 0;
   while (1) {
+    
     if ((messageLength = recvfrom(socketFileDescriptor, message, BUFSIZE, 0,
                                   (SADDR *)&clientAddress, &address_length)) <
         0) {
       perror("recvfrom");
       exit(1);
+    }
+    else{
+        endFlag++;
     }
 
     printf(
@@ -131,6 +135,10 @@ int main(int argc, char *argv[]) {
                (SADDR *)&clientAddress, address_length) < 0) {
       perror("sendto");
       exit(1);
+    }
+
+    if(endFlag > 4){
+        close(connectionFileDescriptor);
     }
   }
 }

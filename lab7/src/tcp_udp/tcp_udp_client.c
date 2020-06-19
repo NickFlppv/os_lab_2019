@@ -11,7 +11,6 @@
 
 #define SADDR struct sockaddr
 #define SIZE sizeof(struct sockaddr_in)
-#define SLEN sizeof(struct sockaddr_in)
 
 int main(int argc, char *argv[]) {
 
@@ -68,8 +67,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  int fd;
-  int nread;
+  int socketFileDescriptor, connectionFileDescriptor;
   char buf[BUFSIZE];
   struct sockaddr_in servaddr;
   if (argc < 3) {
@@ -77,7 +75,7 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+  if ((socketFileDescriptor = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     perror("socket creating");
     exit(1);
   }
@@ -92,39 +90,37 @@ int main(int argc, char *argv[]) {
   }
 
 
-  if (connect(fd, (SADDR *)&servaddr, SIZE) < 0) {
+  if ((connectionFileDescriptor = connect(socketFileDescriptor, (SADDR *)&servaddr, SIZE)) < 0) {
     perror("connection error");
     exit(1);
   }
   printf("connected to server %s:%d\n", ADDR, SERV_PORT);
-  close(fd);
   // udp starts
 
-  int sockfd, n;
+  int messageLength;
   char sendline[BUFSIZE], recvline[BUFSIZE + 1];
   struct sockaddr_in cliaddr;
 
-  if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+  if ((socketFileDescriptor = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
     perror("socket problem");
     exit(1);
   }
 
-  write(1, "Enter udp message:\n", 13);
-
-  while ((n = read(0, sendline, BUFSIZE)) > 0) {
-    if (sendto(sockfd, sendline, n, 0, (SADDR *)&servaddr, SLEN) == -1) {
+  printf("Enter udp message:\n");
+  while ((messageLength = read(0, sendline, BUFSIZE)) > 0) {
+    if (sendto(socketFileDescriptor, sendline, messageLength, 0, (SADDR *)&servaddr, SIZE) == -1) {
       perror("sendto problem");
       exit(1);
     }
 
-    if (recvfrom(sockfd, recvline, BUFSIZE, 0, NULL, NULL) == -1) {
+    if (recvfrom(socketFileDescriptor, recvline, BUFSIZE, 0, NULL, NULL) == -1) {
       perror("recvfrom problem");
       exit(1);
     }
 
-    printf("REPLY FROM SERVER= %s\n", recvline);
+    printf("Response from server= %s\n", recvline);
   }
-  close(sockfd);
+  close(socketFileDescriptor);
   exit(0);
 }
 // ./client --BUFSIZE 1024 --SERV_PORT 10050 --ADDR 127.0.0.1
