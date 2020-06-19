@@ -1,9 +1,9 @@
+#include <getopt.h>
 #include <netinet/in.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <signal.h>
-#include <getopt.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -91,8 +91,7 @@ int main(int argc, char *argv[]) {
   }
 
   if ((connectionFileDescriptor =
-           accept(socketFileDescriptor, 
-                (SADDR *)&clientAddress,
+           accept(socketFileDescriptor, (SADDR *)&clientAddress,
                   &address_length)) < 0) {
     perror("accept");
     exit(1);
@@ -112,39 +111,31 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
   printf("Accepting udp starts...\n");
-  pid_t child_pid;
   int endFlag = 0;
-  while (1) {
-    child_pid = fork();
-    if(child_pid < 0){
-        printf("fork failed");
-        exit(1);
-    }
-    if(child_pid == 0)  {
-        if ((messageLength = recvfrom(socketFileDescriptor, message, BUFSIZE, 0,
+  pid_t child_pid = fork();
+  if (child_pid < 0) {
+    printf("fork failed");
+    exit(1);
+  }
+  if (child_pid == 0) {
+    while (1) {
+      if ((messageLength = recvfrom(socketFileDescriptor, message, BUFSIZE, 0,
                                     (SADDR *)&clientAddress, &address_length)) <
-            0) {
+          0) {
         perror("recvfrom");
         exit(1);
-        }
-        else{
-            endFlag++;
-        }
+      } else {
+        endFlag++;
+      }
 
-        printf(
-            "Request message: %s\n Accepted %d chars\n", message, messageLength);
+      printf("Request message: %s\n Accepted %d chars\n", message,
+             messageLength);
 
-        // if (sendto(socketFileDescriptor, message, messageLength, 0,
-        //            (SADDR *)&clientAddress, address_length) < 0) {
-        //   perror("sendto");
-        //   exit(1);
-        // }
-
-        if(endFlag > 4){
-            close(connectionFileDescriptor);
-        }
-        kill(child_pid, SIGKILL);
+      if (endFlag > 4) {
+        close(socketFileDescriptor);
+      }
     }
   }
+  close(connectionFileDescriptor);
 }
 // ./server --BUFSIZE 1024 --SERV_PORT 10050
