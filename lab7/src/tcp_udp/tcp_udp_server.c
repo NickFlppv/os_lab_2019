@@ -64,82 +64,74 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  const size_t kSize = sizeof(struct sockaddr_in);
-
-  int lfd, cfd;
-  int nread;
+  int socketFileDescriptor, connectionFileDescriptor;
   char buf[BUFSIZE];
-  struct sockaddr_in servaddr;
-  struct sockaddr_in cliaddr;
+  unsigned int address_length = (unsigned int)sizeof(struct sockaddr_in);
+  struct sockaddr_in serverAddress;
+  struct sockaddr_in clientAddress;
 
-  if ((lfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+  if ((socketFileDescriptor = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     perror("socket");
     exit(1);
   }
 
-  memset(&servaddr, 0, kSize);
-  servaddr.sin_family = AF_INET;
-  servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-  servaddr.sin_port = htons(SERV_PORT);
+  memset(&serverAddress, 0, address_length);
+  serverAddress.sin_family = AF_INET;
+  serverAddress.sin_addr.s_addr = htonl(INADDR_ANY);
+  serverAddress.sin_port = htons(SERV_PORT);
 
-  if (bind(lfd, (SADDR *)&servaddr, kSize) < 0) {
+  if (bind(socketFileDescriptor, (SADDR *)&serverAddress, address_length) < 0) {
     perror("bind");
     exit(1);
   }
 
-  if (listen(lfd, 5) < 0) {
+  if (listen(socketFileDescriptor, 5) < 0) {
     perror("listen");
     exit(1);
   }
 
-//   while (1) {
-    unsigned int clilen = kSize;
+  if ((connectionFileDescriptor =
+           accept(socketFileDescriptor, 
+                (SADDR *)&clientAddress,
+                  &address_length)) < 0) {
+    perror("accept");
+    exit(1);
+  }
+  printf("connection established\n");
+  close(connectionFileDescriptor);
+  // udp starts
+  int messageLength;
+  char message[BUFSIZE], ipadr[16];
 
-    if ((cfd = accept(lfd, (SADDR *)&cliaddr, &clilen)) < 0) {
-      perror("accept");
+  if ((socketFileDescriptor = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+    perror("socket problem");
+    exit(1);
+  }
+
+  if (bind(socketFileDescriptor, (SADDR *)&serverAddress, address_length) < 0) {
+    perror("bind problem");
+    exit(1);
+  }
+  printf("Accepting udp starts...\n");
+
+  while (1) {
+    if ((messageLength = recvfrom(socketFileDescriptor, message, BUFSIZE, 0,
+                                  (SADDR *)&clientAddress, &address_length)) <
+        0) {
+      perror("recvfrom");
       exit(1);
     }
-    printf("connection established\n");
-    close(cfd);
-    // udp starts
-    
-    int sockfd, n;
-    char mesg[BUFSIZE], ipadr[16];
 
-    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-      perror("socket problem");
+    printf(
+        "REQUEST %s FROM %s : %d\n", message,
+        inet_ntop(AF_INET, (void *)&clientAddress.sin_addr.s_addr, ipadr, 16),
+        ntohs(clientAddress.sin_port));
+
+    if (sendto(socketFileDescriptor, message, messageLength, 0,
+               (SADDR *)&clientAddress, address_length) < 0) {
+      perror("sendto");
       exit(1);
     }
-
-    memset(&servaddr, 0, SLEN);
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    servaddr.sin_port = htons(SERV_PORT);
-
-    if (bind(sockfd, (SADDR *)&servaddr, SLEN) < 0) {
-      perror("bind problem");
-      exit(1);
-    }
-    printf("Accepting udp starts...\n");
-
-    while (1) {
-      unsigned int len = SLEN;
-
-      if ((n = recvfrom(sockfd, mesg, BUFSIZE, 0, (SADDR *)&cliaddr, &len)) <
-          0) {
-        perror("recvfrom");
-        exit(1);
-      }
-      mesg[n] = 0;
-
-      printf("REQUEST %s      FROM %s : %d\n", mesg,
-             inet_ntop(AF_INET, (void *)&cliaddr.sin_addr.s_addr, ipadr, 16),
-             ntohs(cliaddr.sin_port));
-
-      if (sendto(sockfd, mesg, n, 0, (SADDR *)&cliaddr, len) < 0) {
-        perror("sendto");
-        exit(1);
-      }
-    }
+  }
 }
 // ./server --BUFSIZE 1024 --SERV_PORT 10050
