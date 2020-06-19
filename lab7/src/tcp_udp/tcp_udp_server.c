@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <signal.h>
 #include <getopt.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -112,33 +112,38 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
   printf("Accepting udp starts...\n");
-
+  pid_t child_pid;
   int endFlag = 0;
   while (1) {
-    
-    if ((messageLength = recvfrom(socketFileDescriptor, message, BUFSIZE, 0,
-                                  (SADDR *)&clientAddress, &address_length)) <
-        0) {
-      perror("recvfrom");
-      exit(1);
+    child_pid = fork();
+    if(child_pid < 0){
+        printf("fork failed");
+        exit(1);
     }
-    else{
-        endFlag++;
-    }
+    if(child_pid == 0)  {
+        if ((messageLength = recvfrom(socketFileDescriptor, message, BUFSIZE, 0,
+                                    (SADDR *)&clientAddress, &address_length)) <
+            0) {
+        perror("recvfrom");
+        exit(1);
+        }
+        else{
+            endFlag++;
+        }
 
-    printf(
-        "REQUEST %s FROM %s : %d\n", message,
-        inet_ntop(AF_INET, (void *)&clientAddress.sin_addr.s_addr, ipadr, 16),
-        ntohs(clientAddress.sin_port));
+        printf(
+            "Request message: %s\n Accepted %d chars\n", message, messageLength);
 
-    if (sendto(socketFileDescriptor, message, messageLength, 0,
-               (SADDR *)&clientAddress, address_length) < 0) {
-      perror("sendto");
-      exit(1);
-    }
+        // if (sendto(socketFileDescriptor, message, messageLength, 0,
+        //            (SADDR *)&clientAddress, address_length) < 0) {
+        //   perror("sendto");
+        //   exit(1);
+        // }
 
-    if(endFlag > 4){
-        close(connectionFileDescriptor);
+        if(endFlag > 4){
+            close(connectionFileDescriptor);
+        }
+        kill(child_pid, SIGKILL);
     }
   }
 }
